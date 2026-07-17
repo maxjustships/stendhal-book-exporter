@@ -1,72 +1,581 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!doctype html>
+<html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <title>Stendhal Formatter</title>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Format plain-text manuscripts for import into books with the Stendhal Minecraft mod, entirely in your browser."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23e8d6ad'/%3E%3Cpath d='M16 14h23c5 0 9 4 9 9v27H25c-5 0-9-4-9-9V14Z' fill='%23a33a2b'/%3E%3Cpath d='M25 14v36M31 24h11M31 31h11M31 38h8' stroke='%23f4e7c8' stroke-width='3'/%3E%3C/svg%3E"
+    />
+    <title>Manuscript Workbench — Stendhal Formatter</title>
     <style>
+      :root {
+        color-scheme: light;
+        --paper: #e8d6ad;
+        --paper-light: #f4e7c8;
+        --paper-deep: #d8c08c;
+        --ink: #211c17;
+        --ink-soft: #594a3b;
+        --rule: #8a6b42;
+        --wax: #a33a2b;
+        --wax-dark: #78271e;
+        --focus: #2e6f5c;
+        --serif: Georgia, "Times New Roman", Times, serif;
+        --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        --ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+        --duration: 140ms;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        min-width: 18rem;
+        background: var(--ink);
+      }
+
       body {
+        min-height: 100vh;
+        margin: 0;
+        padding: max(1rem, env(safe-area-inset-top))
+          max(1rem, env(safe-area-inset-right))
+          max(1.5rem, env(safe-area-inset-bottom))
+          max(1rem, env(safe-area-inset-left));
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, transparent 49.8%, #342b22 50%, transparent 50.2%),
+          var(--ink);
+        font-family: var(--serif);
+        font-size: 1rem;
+        line-height: 1.5;
+      }
+
+      button,
+      input,
+      textarea {
+        font: inherit;
+      }
+
+      a {
+        color: var(--wax-dark);
+        text-decoration-thickness: 0.08em;
+        text-underline-offset: 0.18em;
+      }
+
+      a:hover {
+        text-decoration-thickness: 0.14em;
+      }
+
+      :focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 3px;
+      }
+
+      .skip-link {
+        position: fixed;
+        z-index: 10;
+        top: 0.75rem;
+        left: 0.75rem;
+        padding: 0.75rem 1rem;
+        color: var(--paper-light);
+        background: var(--focus);
+        font-family: var(--ui);
+        font-weight: 700;
+        transform: translateY(-160%);
+        transition: transform var(--duration) var(--ease-out);
+      }
+
+      .skip-link:focus {
+        transform: translateY(0);
+      }
+
+      .sheet {
+        width: min(90rem, 100%);
+        margin: 0 auto;
+        overflow: hidden;
+        border: 1px solid var(--rule);
+        background: var(--paper);
+        box-shadow: 0 0.75rem 2.5rem #0f0c09;
+      }
+
+      .masthead {
+        display: grid;
+        gap: 1.5rem;
+        padding: clamp(1.5rem, 4vw, 3.5rem);
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .eyebrow,
+      .section-number,
+      .field-label,
+      .panel-meta,
+      .status-strip,
+      .context-note {
+        font-family: var(--ui);
+      }
+
+      .eyebrow {
+        margin: 0 0 0.5rem;
+        color: var(--wax-dark);
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 13ch;
+        margin: 0;
+        font-size: clamp(2.4rem, 8vw, 5.6rem);
+        font-weight: 400;
+        letter-spacing: -0.045em;
+        line-height: 0.9;
+      }
+
+      .dek {
+        max-width: 43rem;
+        margin: 1.25rem 0 0;
+        color: var(--ink-soft);
+        font-size: clamp(1.05rem, 2vw, 1.35rem);
+        line-height: 1.45;
+      }
+
+      .edition-mark {
+        align-self: end;
+        padding-top: 1rem;
+        border-top: 1px solid var(--rule);
+        color: var(--ink-soft);
+        font-family: var(--ui);
+        font-size: 0.875rem;
+      }
+
+      .edition-mark strong {
+        display: block;
+        margin-bottom: 0.2rem;
+        color: var(--ink);
+        font-family: var(--serif);
+        font-size: 1.25rem;
+        font-weight: 400;
+      }
+
+      main {
+        padding: clamp(1.25rem, 3vw, 2.5rem) clamp(1.25rem, 4vw, 3.5rem)
+          clamp(2rem, 5vw, 4rem);
+      }
+
+      .metadata {
+        display: grid;
+        gap: 1rem;
+        align-items: end;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--rule);
+      }
+
+      .field {
+        display: grid;
+        gap: 0.4rem;
+      }
+
+      .field-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--rule);
+        border-radius: 0;
+        color: var(--ink);
+        background: var(--paper-light);
+      }
+
+      input {
+        min-height: 3rem;
+        padding: 0.65rem 0.8rem;
+        font-family: var(--serif);
+        font-size: 1.05rem;
+      }
+
+      input::placeholder,
+      textarea::placeholder {
+        color: #6b5946;
+        opacity: 1;
+      }
+
+      input:hover,
+      textarea:hover {
+        border-color: var(--ink);
+      }
+
+      input:focus,
+      textarea:focus {
+        border-color: var(--focus);
+      }
+
+      .export-wrap {
         display: flex;
         justify-content: center;
-        gap: 16px;
-        padding: 20px;
-        font-family: sans-serif;
+        padding: 0.25rem;
       }
 
-      textarea,
-      input,
-      button {
-        width: 100%;
-        box-sizing: border-box;
-        font-size: 14px;
-        padding: 8px;
+      .export-button {
+        position: relative;
+        display: grid;
+        width: 6.5rem;
+        min-width: 6.5rem;
+        min-height: 6.5rem;
+        place-content: center;
+        border: 2px solid var(--wax-dark);
+        border-radius: 50%;
+        color: var(--paper-light);
+        background: var(--wax);
+        box-shadow:
+          inset 0 0 0 0.28rem var(--wax),
+          inset 0 0 0 0.35rem #c77464,
+          0 0.2rem 0 var(--wax-dark);
+        cursor: pointer;
+        font-family: var(--ui);
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        line-height: 1.15;
+        text-align: center;
+        text-transform: uppercase;
+        transition:
+          transform var(--duration) var(--ease-out),
+          background-color var(--duration) var(--ease-out),
+          box-shadow var(--duration) var(--ease-out);
       }
 
-      .column {
-        border: 3px solid black;
-        padding: 10px;
-        width: 30%;
+      .export-button::before {
+        content: "↓";
+        display: block;
+        margin-bottom: 0.15rem;
+        font-family: var(--serif);
+        font-size: 1.35rem;
+        font-weight: 400;
+        line-height: 1;
+      }
+
+      .export-button:hover {
+        background: #8f3024;
+        transform: translateY(-0.12rem);
+        box-shadow:
+          inset 0 0 0 0.28rem #8f3024,
+          inset 0 0 0 0.35rem #c77464,
+          0 0.32rem 0 var(--wax-dark);
+      }
+
+      .export-button:active {
+        transform: translateY(0.08rem);
+        box-shadow:
+          inset 0 0 0 0.28rem var(--wax),
+          inset 0 0 0 0.35rem #c77464,
+          0 0.08rem 0 var(--wax-dark);
+      }
+
+      .status-strip {
         display: flex;
-        flex-direction: column;
-        gap: 8px;
+        flex-wrap: wrap;
+        gap: 0.25rem 1.5rem;
+        justify-content: space-between;
+        padding: 0.8rem 0;
+        border-bottom: 1px solid var(--rule);
+        color: var(--ink-soft);
+        font-size: 0.875rem;
+        font-variant-numeric: tabular-nums;
       }
 
-      .center-column {
-        width: 10%;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        justify-content: flex-start;
-        align-items: stretch;
+      #pageCount {
+        color: var(--ink);
+        font-weight: 750;
       }
 
-      label {
-        font-weight: bold;
+      .workbench {
+        display: grid;
+        gap: 2rem;
+        padding-top: 2rem;
+      }
+
+      .editor-panel {
+        min-width: 0;
+      }
+
+      .panel-heading {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.8rem;
+        align-items: baseline;
+        margin-bottom: 0.75rem;
+      }
+
+      .section-number {
+        color: var(--wax-dark);
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.12em;
+      }
+
+      h2 {
+        margin: 0;
+        font-size: clamp(1.55rem, 3vw, 2.1rem);
+        font-weight: 400;
+        line-height: 1.1;
+      }
+
+      .panel-meta {
+        grid-column: 2;
+        margin: -0.3rem 0 0;
+        color: var(--ink-soft);
+        font-size: 0.8125rem;
+      }
+
+      textarea {
+        display: block;
+        min-height: 25rem;
+        padding: 1rem;
+        resize: vertical;
+        line-height: 1.55;
+      }
+
+      #plainText {
+        font-family: var(--serif);
+        font-size: 1.05rem;
       }
 
       #stendhalText {
-        resize: none;
-        height: 100%;
-        min-height: 600px;
+        background: var(--paper-deep);
+        font-family: var(--mono);
+        font-size: 0.875rem;
+        white-space: pre;
+      }
+
+      .context-note {
+        display: grid;
+        gap: 0.5rem;
+        padding: 1.25rem clamp(1.25rem, 4vw, 3.5rem);
+        border-top: 1px solid var(--rule);
+        color: var(--ink-soft);
+        font-size: 0.8125rem;
+      }
+
+      .context-note p {
+        max-width: 72rem;
+        margin: 0;
+      }
+
+      @media (min-width: 46rem) {
+        .masthead {
+          grid-template-columns: minmax(0, 2.4fr) minmax(13rem, 0.8fr);
+          align-items: end;
+        }
+
+        .metadata {
+          grid-template-columns: minmax(12rem, 1fr) minmax(12rem, 0.8fr) auto;
+        }
+
+        .export-wrap {
+          padding-inline: 1rem;
+        }
+      }
+
+      @media (min-width: 64rem) {
+        .masthead {
+          padding-block: 2rem 1.5rem;
+        }
+
+        h1 {
+          font-size: clamp(2.4rem, 6vw, 4.6rem);
+        }
+
+        .dek {
+          margin-top: 0.8rem;
+        }
+
+        main {
+          padding-top: 1.25rem;
+          padding-bottom: 2.5rem;
+        }
+
+        .metadata {
+          padding-bottom: 1rem;
+        }
+
+        .status-strip {
+          padding-block: 0.65rem;
+        }
+
+        .workbench {
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 0;
+          padding-top: 1.25rem;
+        }
+
+        .editor-panel:first-child {
+          padding-right: 2rem;
+          border-right: 1px solid var(--rule);
+        }
+
+        .editor-panel:last-child {
+          padding-left: 2rem;
+        }
+
+        textarea {
+          min-height: 32rem;
+        }
+      }
+
+      @media (pointer: coarse) {
+        input {
+          min-height: 3.25rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          transition-duration: 0.01ms !important;
+        }
       }
     </style>
   </head>
   <body>
-    <div class="column">
-      <label>Обычный текст</label>
-      <textarea id="plainText" rows="30"></textarea>
-    </div>
+    <a class="skip-link" href="#workbench">Skip to the workbench</a>
 
-    <div class="center-column">
-      <label for="title">Тайтл</label>
-      <input id="title" type="text" placeholder="Без названия" />
-      <label for="author">Автор</label>
-      <input id="author" type="text" placeholder="Аноним" />
-      <button id="downloadBtn">💾 Экспорт</button>
-    </div>
+    <div class="sheet">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">A quiet tool for book authors</p>
+          <h1>Manuscript Workbench</h1>
+          <p class="dek">
+            Shape plain prose into a Stendhal-ready manuscript while you write.
+            Built for players preparing books for import into Minecraft.
+          </p>
+        </div>
+        <div class="edition-mark">
+          <strong>From draft to folio</strong>
+          Your text stays in this browser. Nothing is uploaded.
+        </div>
+      </header>
 
-    <div class="column">
-      <label>Stendhal формат</label>
-      <textarea id="stendhalText" disabled></textarea>
+      <main id="workbench">
+        <section class="metadata" aria-label="Manuscript details and export">
+          <div class="field">
+            <label class="field-label" for="title">Title</label>
+            <input
+              id="title"
+              type="text"
+              autocomplete="off"
+              placeholder="Untitled"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="author">Author</label>
+            <input
+              id="author"
+              type="text"
+              autocomplete="off"
+              placeholder="Anonymous"
+            />
+          </div>
+
+          <div class="export-wrap">
+            <button
+              class="export-button"
+              id="downloadBtn"
+              type="button"
+              aria-describedby="exportHint"
+            >
+              Export<br />.stendhal
+            </button>
+          </div>
+        </section>
+
+        <div class="status-strip" role="status" aria-live="polite">
+          <span id="statusText">Preview ready</span>
+          <span><span id="pageCount">1 page</span> in the current manuscript</span>
+        </div>
+
+        <div class="workbench">
+          <section class="editor-panel" aria-labelledby="sourceHeading">
+            <div class="panel-heading">
+              <span class="section-number" aria-hidden="true">I</span>
+              <h2 id="sourceHeading">Source manuscript</h2>
+              <p class="panel-meta" id="sourceHint">
+                Write or paste plain text. Line breaks become groups.
+              </p>
+            </div>
+            <label class="field-label" for="plainText">Manuscript text</label>
+            <textarea
+              id="plainText"
+              aria-describedby="sourceHint"
+              placeholder="Begin your manuscript…"
+              rows="20"
+            ></textarea>
+          </section>
+
+          <section class="editor-panel" aria-labelledby="outputHeading">
+            <div class="panel-heading">
+              <span class="section-number" aria-hidden="true">II</span>
+              <h2 id="outputHeading">Stendhal output</h2>
+              <p class="panel-meta" id="outputHint">
+                Live, read-only, and selectable for inspection or copying.
+              </p>
+            </div>
+            <label class="field-label" for="stendhalText">Serialized output</label>
+            <textarea
+              id="stendhalText"
+              aria-describedby="outputHint"
+              readonly
+              rows="20"
+              spellcheck="false"
+            ></textarea>
+          </section>
+        </div>
+
+        <p id="exportHint" class="panel-meta">
+          Export downloads the exact preview as a UTF-8 plain-text file.
+        </p>
+      </main>
+
+      <footer class="context-note">
+        <p>
+          Manuscript Workbench is an independent community utility and is not
+          affiliated with or endorsed by Stendhal, its authors, CurseForge,
+          Mojang Studios, or Microsoft.
+        </p>
+        <p>
+          Context:
+          <a
+            href="https://www.curseforge.com/minecraft/mc-mods/stendhal"
+            rel="external noreferrer"
+            >Stendhal on CurseForge</a
+          >
+          ·
+          <a
+            href="https://github.com/maxjustships/stendhal-book-exporter"
+            rel="external noreferrer"
+            >source repository on GitHub</a
+          >
+        </p>
+      </footer>
     </div>
 
     <script>
@@ -75,26 +584,27 @@
       const authorInput = document.getElementById('author')
       const stendhalText = document.getElementById('stendhalText')
       const downloadBtn = document.getElementById('downloadBtn')
+      const pageCount = document.getElementById('pageCount')
+      const statusText = document.getElementById('statusText')
 
-      // Функция, которая разбивает один параграф на строки длиной не более maxCharsPerGroup
+      // Split one paragraph into groups no longer than maxCharsPerGroup.
       function wrapParagraph(paragraph, maxCharsPerGroup = 19) {
-        // Разбиваем с сохранением пробелов (каждый токен – слово + последующие пробелы)
+        // Preserve spaces by matching each word together with the spaces after it.
         const tokens = paragraph.match(/\S+\s*/g) || []
         let lines = []
         let currentLine = ''
 
         for (let token of tokens) {
-          // Если добавление токена не превышает лимит – добавляем
+          // Add the token when the resulting group remains within the limit.
           if ((currentLine + token).length <= maxCharsPerGroup) {
             currentLine += token
           } else {
-            // Если текущая строка не пуста – фиксируем её
+            // Store the current group before starting another one.
             if (currentLine.trim().length > 0) {
               lines.push(currentLine.trimEnd())
             }
-            // Начинаем новую строку с текущего токена
             currentLine = token
-            // Если слово само превышает лимит – всё равно помещаем его в отдельную строку (без разбиения)
+            // Keep a word that exceeds the limit intact in its own group.
             if (currentLine.length > maxCharsPerGroup) {
               lines.push(currentLine)
               currentLine = ''
@@ -107,32 +617,28 @@
         return lines
       }
 
-      // Функция, которая превращает исходный текст в массив страниц с учётом:
-      // - не более 256 символов на странице,
-      // - не более 14 строк (групп) на странице, каждая не длиннее 28 символов,
-      // - сохранения исходных переносов строк и отступов.
+      // Convert source text into pages with 256 characters and 14 groups at most.
       function splitTextToPagesStendhal(
         text,
         maxCharsPage = 256,
         maxGroupsPerPage = 14,
         maxCharsPerGroup = 19
       ) {
-        // Разбиваем текст на "параграфы" по символу перевода строки
+        // Treat each source line as a paragraph.
         const rawParagraphs = text.split('\n')
         let stendhalLines = []
 
         for (let para of rawParagraphs) {
           if (para.trim() === '') {
-            // Если строка пустая – сохраняем её как пустую группу
+            // Preserve an empty source line as an empty group.
             stendhalLines.push('')
           } else {
-            // Оборачиваем параграф с сохранением исходного whitespace
             const wrappedLines = wrapParagraph(para, maxCharsPerGroup)
             stendhalLines = stendhalLines.concat(wrappedLines)
           }
         }
 
-        // Группируем строки в страницы с ограничением по количеству строк и общему количеству символов
+        // Group lines into pages by group count and serialized character count.
         let pages = []
         let currentPageLines = []
 
@@ -158,8 +664,8 @@
       }
 
       function generateStendhalFormat() {
-        const title = titleInput.value.trim() || 'Без названия'
-        const author = authorInput.value.trim() || 'Аноним'
+        const title = titleInput.value.trim() || 'Untitled'
+        const author = authorInput.value.trim() || 'Anonymous'
         const text = plainText.value
 
         const pages = splitTextToPagesStendhal(text)
@@ -171,10 +677,13 @@
       function updateOutput() {
         const formatted = generateStendhalFormat()
         stendhalText.value = formatted
+        const pages = splitTextToPagesStendhal(plainText.value)
+        pageCount.textContent = `${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`
+        statusText.textContent = 'Preview updated'
       }
 
       function downloadFile() {
-        const title = titleInput.value.trim() || 'Без названия'
+        const title = titleInput.value.trim() || 'Untitled'
         const blob = new Blob([generateStendhalFormat()], {
           type: 'text/plain;charset=utf-8',
         })
@@ -191,8 +700,9 @@
       authorInput.addEventListener('input', updateOutput)
       downloadBtn.addEventListener('click', downloadFile)
 
-      // Инициализация
+      // Initialize the preview on first load.
       updateOutput()
+      statusText.textContent = 'Preview ready'
     </script>
   </body>
 </html>
